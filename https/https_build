@@ -1,0 +1,56 @@
+yum install -y openssl
+yum install -y mod_ssl ----it create ssl.con inside /etc/httpd/conf.d/ssl.conf
+#Generate key request
+openssl genrsa -out ca.key 1024
+#Generate Certificate signing request key
+openssl req -new -key ca.key -out ca.csr
+#create public and private key
+openssl x509 -req -days 365 -in ca.csr -signkey ca.key -out ca.crt
+#Now copy the genetate key to security key root directory i.e /etc/pki/tls
+cp ca.crt /etc/pki/tls/certs/
+cp ca.csr /etc/pki/tls/private/
+cp ca.key /etc/pki/tls/private/
+##Now call the key inside the ssl.conf or in the <VirtualHost>
+##Inside the ssl.conf
+SSLCertificateFile /etc/pki/tls/certs/ca.crt
+SSLCertificateKeyFile /etc/pki/tls/private/ca.key
+#####inside the <VirtaulHost>
+<VirtualHost _default_:443>
+   ServerName www.st.com
+   DocumentRoot /var/www/html
+   SSLEngine On
+   SSLCertificateFile /etc/pki/tls/certs/ca.crt
+   SSLCertificatekeyFile /etc/pki/tls/private/ca.key
+</VirtualHost>
+<Directory /var/www/html>
+order allow,deny
+allow from all
+</Directory>
+##################Now redirect request form http to https########################
+###################Simple redirect##########################
+<VirtualHost *:80>
+   ServerName www.st.com
+   Redirect / https://www.st.com   
+</VirtualHost>
+####################Rewrite rule based####
+#####mod_rewrite shoud be enbaled###########
+<VirtualHost *:80>
+   ServerName www.st.com
+   #Redirect / https://www.st.com
+   RewriteEngine On
+   RewriteCond %{HTTPS}  !=on
+   RewriteRule ^/?(.*) https://%{SERVER_NAME}/$1 [R,L]
+</VirtualHost>
+<VirtualHost _default_:443>
+   ServerName www.st.com
+   DocumentRoot /var/www/html
+   SSLEngine On
+   SSLCertificateFile /etc/pki/tls/certs/ca.crt
+   SSLCertificatekeyFile /etc/pki/tls/private/ca.key
+</VirtualHost>
+<Directory /var/www/html>
+order allow,deny
+allow from all
+</Directory>
+
+##################Thats it########################################
